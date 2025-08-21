@@ -1,0 +1,5 @@
+{
+  "/api/manifests/route": "app/api/manifests/route.js",
+  "/api/export/route": "app/api/export/route.js",
+  "/page": "app/page.js"
+}
