@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { db } from '@/lib/db';
 
 // Function to convert JSON data to a CSV string
 function convertToCsv(data: any[]) {
@@ -34,9 +34,8 @@ function convertToCsv(data: any[]) {
 
 export async function GET() {
     try {
-        const db = await getDb();
-        // Fetch all data. In a real-world large-scale app, you'd want pagination.
-        const manifests = await db.all('SELECT * FROM manifests ORDER BY createdAt DESC');
+        const result = await db.query('SELECT * FROM manifests ORDER BY createdAt DESC');
+        const manifests = result.rows;
 
         const csv = convertToCsv(manifests);
 
