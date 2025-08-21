@@ -140,8 +140,15 @@ export default function SGMPage() {
   const fetchManifests = async () => {
     try {
       const response = await fetch('/api/manifests');
+      if (!response.ok) {
+        // Log the error and set manifests to an empty array to prevent crashes
+        console.error("API Error:", await response.text());
+        setManifests([]);
+        return;
+      }
       const data = await response.json();
-      setManifests(data);
+      // Ensure data is an array before setting it
+      setManifests(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch manifests", error);
     }

@@ -1,14 +1,33 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
+import { Pool } from 'pg';
 
-let db: Database | null = null;
+// Create a connection pool. The connection string is read from the
+// POSTGRES_URL environment variable that Vercel sets.
+let pool: Pool;
 
-// The schema for our manifests table, matching the final data structure.
-const MANIFESTS_SCHEMA = `
-    CREATE TABLE IF NOT EXISTS manifests (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-        folio TEXT,
+function getPool() {
+  if (!pool) {
+    if (!process.env.POSTGRES_URL) {
+      throw new Error('POSTGRES_URL environment variable is not set.');
+    }
+    pool = new Pool({
+      connectionString: process.env.POSTGRES_URL,
+      // Vercel recommends these settings for serverless environments
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    });
+  }
+  return pool;
+}
+
+// This function should be called once to initialize the database schema.
+export async function initializeDb() {
+  const client = await getPool().connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS manifests (
+        id SERIAL PRIMARY KEY,
+        folio TEXT UNIQUE,
         fecha TEXT,
         aeropuertoSalida TEXT,
         tipoVuelo TEXT,
@@ -19,7 +38,7 @@ const MANIFESTS_SCHEMA = `
         numeroVuelo TEXT,
         pilotoAlMando TEXT,
         licenciaPiloto TEXT,
-        numeroTripulantes TEXT,
+        numeroTripulantes INTEGER,
         origenVuelo TEXT,
         proximaEscala TEXT,
         destinoFinal TEXT,
@@ -28,29 +47,22 @@ const MANIFESTS_SCHEMA = `
         horaTerminoPernocta TEXT,
         horaInicioManiobras TEXT,
         horaSalidaPosicion TEXT,
-        demoras TEXT, -- Stored as JSON
-        embarque TEXT, -- Stored as JSON
-        totales TEXT, -- Stored as JSON
+        demoras JSONB,
+        embarque JSONB,
+        totales JSONB,
         observaciones TEXT,
-        rawText TEXT
-    );
-`;
-
-export async function getDb() {
-    if (db) {
-        return db;
-    }
-
-    // Open the database connection
-    db = await open({
-        filename: './sgm-aifa.db', // The database will be a single file
-        driver: sqlite3.Database
-    });
-
-    // Run the schema migration
-    await db.exec(MANIFESTS_SCHEMA);
-
-    console.log('Database connection established and schema verified.');
-
-    return db;
+        rawText TEXT,
+        createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database schema initialized successfully.');
+  } catch (error) {
+    console.error('Error initializing database schema:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
+
+// We are exporting the pool directly to be used in the API routes.
+export const db = getPool();
