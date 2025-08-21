@@ -19,7 +19,7 @@ export async function GET() {
         let totalPassengers = 0;
         let totalCargo = 0;
 
-        allManifests.forEach(m => {
+        allManifests.forEach((m: { totales: any }) => {
             if (m.totales) {
                 // The 'totales' column is already parsed as JSON from the DB with pg
                 const totals = m.totales;
